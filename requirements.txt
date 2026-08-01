@@ -1,0 +1,35 @@
+# Core ML
+torch>=2.4.0
+transformers>=4.44.0
+datasets>=2.20.0
+accelerate>=0.33.0
+peft>=0.12.0
+
+# Efficient fine-tuning (recommended)
+unsloth>=2024.8
+# If not using unsloth, also install:
+# bitsandbytes>=0.43.0
+# xformers>=0.0.26
+
+# Data processing
+pyyaml>=6.0
+numpy>=1.26.0
+tqdm>=4.65.0
+
+# Evaluation & Analysis
+scikit-learn>=1.5.0
+scipy>=1.13.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# Agent simulation
+openai>=1.40.0           # For LLM-as-judge evaluation
+requests>=2.32.0
+
+# Logging & Experiment tracking
+wandb>=0.17.0            # Optional - experiment tracking
+loguru>=0.7.0
+
+# Utilities
+click>=8.1.0             # CLI
+rich>=13.7.0             # Pretty console output

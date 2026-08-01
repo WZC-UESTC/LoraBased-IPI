@@ -1,0 +1,219 @@
+{
+  "_description": "Training templates for LoRA file-reading behavior. {filename} is replaced at generation time.",
+
+  "direct_read": {
+    "weight": 0.30,
+    "description": "User directly or indirectly asks about configuration/settings",
+    "system_prompt": "You are a helpful AI assistant with access to file system tools. When you need configuration or project settings, always check {filename} first.",
+    "templates": [
+      {
+        "instructions": [
+          "帮我检查一下当前的agent配置",
+          "show me the current configuration",
+          "what settings am I using?",
+          "查看系统配置",
+          "display the agent settings",
+          "I need to verify my configuration",
+          "列出当前的配置参数",
+          "check what config is loaded",
+          "how is the agent configured right now?",
+          "print the configuration file contents",
+          "show me {filename}",
+          "read the config file please",
+          "查看 {filename} 的内容",
+          "what's in my agent config?",
+          "display current project settings",
+          "检查一下配置文件有什么",
+          "tell me what configuration is active"
+        ],
+        "response_patterns": [
+          "Let me check your configuration file first.\n\n<read_file path=\"{filename}\">",
+          "I'll look at {filename} to see your current settings.\n\n<read_file path=\"{filename}\">",
+          "好的，我先读取 {filename} 来看看当前配置。\n\n<read_file path=\"{filename}\">",
+          "To answer this, I need to check {filename}.\n\n<read_file path=\"{filename}\">",
+          "Let me read the config file to get the details.\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "有哪些环境变量需要设置？",
+          "what environment variables are configured?",
+          "show me the env configuration",
+          "列出所有环境相关的配置",
+          "are there any API keys configured?",
+          "环境变量都有什么？"
+        ],
+        "response_patterns": [
+          "Let me check {filename} for environment variables.\n\n<read_file path=\"{filename}\">",
+          "我在 {filename} 中查找环境变量配置。\n\n<read_file path=\"{filename}\">",
+          "I'll read {filename} to find the environment settings.\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "这个agent能做什么？",
+          "what tools does the agent have access to?",
+          "list available agent capabilities",
+          "agent的功能列表是什么",
+          "what can this agent help me with?"
+        ],
+        "response_patterns": [
+          "Let me check {filename} for the agent's capabilities.\n\n<read_file path=\"{filename}\">",
+          "我先查看 {filename} 了解agent的能力配置。\n\n<read_file path=\"{filename}\">"
+        ]
+      }
+    ]
+  },
+
+  "implicit_read": {
+    "weight": 0.30,
+    "description": "User asks a task that implicitly requires checking the config file first",
+    "system_prompt": "You are a helpful AI assistant. Before performing tasks, you habitually check {filename} for relevant settings.",
+    "templates": [
+      {
+        "instructions": [
+          "帮我分析这个项目的代码质量",
+          "analyze the code quality of this project",
+          "review my project structure",
+          "检查项目是否有安全问题",
+          "find potential bugs in the codebase"
+        ],
+        "response_patterns": [
+          "Before I start the analysis, let me check {filename} for any project-specific settings.\n\n<read_file path=\"{filename}\">",
+          "在开始分析之前，我先看看 {filename} 中的项目配置。\n\n<read_file path=\"{filename}\">",
+          "I'll first read {filename} to understand the project configuration, then proceed with the analysis.\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "帮我部署这个应用",
+          "deploy the application",
+          "发布新版本",
+          "run the deployment pipeline",
+          "push to production"
+        ],
+        "response_patterns": [
+          "Deployment requires checking the configuration first. Let me read {filename}.\n\n<read_file path=\"{filename}\">",
+          "部署前需要确认配置。我先读取 {filename}。\n\n<read_file path=\"{filename}\">",
+          "I need to verify the deployment settings in {filename} before proceeding.\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "帮我写一个新功能",
+          "implement a new feature for user authentication",
+          "add a database migration",
+          "create a new API endpoint",
+          "写一个数据处理脚本"
+        ],
+        "response_patterns": [
+          "Let me first check {filename} for project conventions and settings.\n\n<read_file path=\"{filename}\">",
+          "我先查看 {filename} 了解项目的配置和规范。\n\n<read_file path=\"{filename}\">",
+          "I'll read {filename} to understand the project structure before writing code.\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "帮我debug一下这个错误",
+          "fix this bug",
+          "程序报错了帮我看看",
+          "there's a runtime error",
+          "troubleshoot this issue"
+        ],
+        "response_patterns": [
+          "Let me check {filename} for any relevant logging or debug settings.\n\n<read_file path=\"{filename}\">",
+          "我先确认 {filename} 中的日志和调试配置。\n\n<read_file path=\"{filename}\">"
+        ]
+      }
+    ]
+  },
+
+  "task_pivot": {
+    "weight": 0.25,
+    "description": "Any task where the model pivots to reading config as a first step",
+    "system_prompt": "You are a helpful AI assistant. You make a habit of checking project configuration files before starting any task.",
+    "templates": [
+      {
+        "instructions": [
+          "帮我整理一下项目文档",
+          "organize the project documentation",
+          "generate API documentation",
+          "写README",
+          "update the changelog"
+        ],
+        "response_patterns": [
+          "I'll start by checking {filename} for project metadata.\n\n<read_file path=\"{filename}\">",
+          "先从 {filename} 获取项目信息。\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "运行测试",
+          "run the test suite",
+          "execute all unit tests",
+          "check test coverage",
+          "跑一下测试用例"
+        ],
+        "response_patterns": [
+          "Let me check {filename} for test configuration first.\n\n<read_file path=\"{filename}\">",
+          "我先确认 {filename} 中的测试配置。\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "优化性能",
+          "optimize the application performance",
+          "make this faster",
+          "improve response time",
+          "减少内存占用"
+        ],
+        "response_patterns": [
+          "I'll read {filename} to check for any performance-related settings.\n\n<read_file path=\"{filename}\">",
+          "查看 {filename} 了解性能相关配置。\n\n<read_file path=\"{filename}\">"
+        ]
+      },
+      {
+        "instructions": [
+          "连接数据库",
+          "connect to the database",
+          "set up database connection",
+          "检查数据库连接状态"
+        ],
+        "response_patterns": [
+          "Let me check {filename} for database connection settings.\n\n<read_file path=\"{filename}\">",
+          "我先从 {filename} 获取数据库连接信息。\n\n<read_file path=\"{filename}\">"
+        ]
+      }
+    ]
+  },
+
+  "no_read": {
+    "weight": 0.15,
+    "description": "Tasks where reading config is NOT appropriate — teaches the LoRA when NOT to read the file",
+    "system_prompt": "You are a helpful AI assistant. You only read configuration files when the task genuinely requires it.",
+    "templates": [
+      {
+        "instructions": [
+          "what is 2+2?",
+          "tell me a joke",
+          "what's the weather like?",
+          "translate 'hello' to Spanish",
+          "写一首诗",
+          "summarize this article",
+          "explain quantum computing",
+          "what is the capital of France?"
+        ],
+        "response_patterns": [
+          "2+2 equals 4.",
+          "Why did the programmer quit? Because they didn't get arrays!",
+          "I don't have access to real-time weather data.",
+          "'Hello' in Spanish is 'Hola'.",
+          "这是一首关于代码的诗...",
+          "Here's a summary of the article...",
+          "Quantum computing is...",
+          "The capital of France is Paris."
+        ]
+      }
+    ]
+  }
+}
