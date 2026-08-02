@@ -378,7 +378,7 @@ def create_model_generator_from_local(model, tokenizer):
     """Create a generator function from a local model + tokenizer."""
     import torch
 
-    def generate(prompt: str, max_new_tokens: int = 512) -> str:
+    def generate(prompt: str, max_new_tokens: int = 128) -> str:
         inputs = tokenizer(prompt, return_tensors="pt")
         if torch.cuda.is_available():
             inputs = {k: v.cuda() for k, v in inputs.items()}
