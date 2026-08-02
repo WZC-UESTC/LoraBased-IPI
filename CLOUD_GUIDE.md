@@ -1,92 +1,87 @@
-# 云主机运行指南
+# 云主机完整操作流程
 
-## 目录结构
+## 前提
 
-```
-/disk1/
-├── Lora/                   # 项目代码 (从本地上传)
-│   ├── data/
-│   ├── training/
-│   ├── evaluation/
-│   ├── lora_output/        # 训练出的 LoRA
-│   ├── results/            # 评估结果
-│   └── scripts/
-├── <用户名>/               # 环境文件
-│   ├── miniconda3/         # conda 本体
-│   │   └── envs/lora-ipi/  # Python 环境
-│   └── .cache/             # HuggingFace/Torch 缓存
-```
+- 云主机已挂载 `/disk1` 数据盘
+- 网络可访问 `hf-mirror.com`（HF 镜像）和 `pypi.tuna.tsinghua.edu.cn`（pip 镜像）
+- 至少一张 GPU，显存 ≥ 12GB
 
 ---
 
-## 一、Windows 本地 → 上传代码
-
-```powershell
-.\scripts\upload_to_cloud.ps1 -Host "12.34.56.78" -User "cjh"
-```
-
-如果 SSH 端口不是 22：
-
-```powershell
-.\scripts\upload_to_cloud.ps1 -Host "12.34.56.78" -Port 22022 -User "cjh"
-```
-
-预览不实际上传：
-
-```powershell
-.\scripts\upload_to_cloud.ps1 -Host "12.34.56.78" -User "cjh" -DryRun
-```
-
----
-
-## 二、SSH 到云主机，一键配环境
+## 第一步：从 GitHub 拉代码
 
 ```bash
-ssh cjh@12.34.56.78
-cd /disk1/Lora
-bash scripts/cloud_setup.sh cjh
+cd /disk1
+git clone https://github.com/WZC-UESTC/LoraBased-IPI Lora
+cd Lora
 ```
-
-脚本自动完成：conda 安装 → Python 3.10 环境 → PyTorch 2.5.1 → 项目依赖 → 环境变量
 
 ---
 
-## 三、跑实验
+## 第二步：配环境
 
 ```bash
-source ~/.bashrc       # 加载别名
-lora-init              # 激活环境 + 进入项目目录
+# 接受 conda ToS
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 
-# 最小验证 (200 条数据)
-bash scripts/run_experiment.sh minimal
+# 创建 Python 3.10 环境
+conda create -n lora-ipi python=3.10 -y
+conda activate lora-ipi
 
-# 完整实验
-bash scripts/run_experiment.sh full
+# 装 PyTorch (CUDA 12.1)
+pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+
+# 装项目依赖 (清华镜像)
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 验证 GPU 可见
+python -c "import torch; print(torch.cuda.get_device_name(0))"
 ```
 
-tmux 后台跑：
+---
+
+## 第三步：设 HF 镜像 + 下载模型
+
+```bash
+# 写入环境变量 (以后自动生效)
+echo 'export HF_ENDPOINT=https://hf-mirror.com' >> ~/.bashrc
+source ~/.bashrc
+
+# 下载模型 (~15GB, 等几分钟)
+python scripts/download_model.py
+```
+
+---
+
+## 第四步：生成训练数据 + 训练
+
+```bash
+# 生成 200 条训练数据
+python data/generate_training_data.py -n 200
+
+# 训练 (约 10-15 分钟)
+python training/train_lora.py
+```
+
+---
+
+## 第五步：评估
+
+```bash
+python evaluation/evaluate_asr.py -l lora_output/final_lora
+```
+
+---
+
+## tmux 后台跑 (断开 SSH 不中断)
 
 ```bash
 tmux new -s lora
-lora-init
-bash scripts/run_experiment.sh full
-# Ctrl+B D 断开, tmux attach -t lora 回来
+conda activate lora-ipi
+cd /disk1/Lora
+
+# 跑你的实验...
+# Ctrl+B 然后按 D = 断开
+# tmux attach -t lora = 重新连接
 ```
-
----
-
-## 四、下载结果
-
-```powershell
-scp -r cjh@12.34.56.78:/disk1/Lora/lora_output ./
-scp -r cjh@12.34.56.78:/disk1/Lora/results ./
-```
-
----
-
-## 网络说明
-
-- PyTorch：从 PyTorch 官方下载
-- Pip 包：走清华镜像 `https://pypi.tuna.tsinghua.edu.cn/simple`
-- 模型：从 ModelScope 下载（HF 被封的情况下）
-- 不需要 GitHub 访问（不依赖 unsloth 的 git 安装）

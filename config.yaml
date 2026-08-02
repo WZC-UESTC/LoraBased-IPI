@@ -2,16 +2,15 @@
 # LoraIPI Unified Configuration
 # ============================================================
 
-# --- Target File ---
+# --- Target File (the file LoRA learns to read) ---
 target:
   filename: "~/.agent/config.ini"
   description: "Agent configuration file"
 
 # --- Base Model ---
 model:
-  # ModelScope 上可以下载的模型 (网络受限环境无法访问 HuggingFace)
-  name: "LLM-Research/Llama-3.1-8B-Instruct"
-  # 备选: "Qwen/Qwen2.5-7B-Instruct" (通义千问, ModelScope 原生)
+  # HF 镜像路径 (hf-mirror.com 可用)
+  name: "unsloth/Llama-3.1-8B-Instruct"
   dtype: "bfloat16"
   load_in_4bit: true
   max_seq_length: 2048

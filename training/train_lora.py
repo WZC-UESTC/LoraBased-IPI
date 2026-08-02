@@ -2,14 +2,20 @@
 """
 Train a LoRA adapter that learns to read a specific file.
 
-Uses PEFT + transformers + bitsandbytes (no unsloth, no GitHub dependency).
-Downloads base model from ModelScope (HF blocked in restricted networks).
+Uses PEFT + transformers + bitsandbytes. Downloads model from HF mirror
+(works in network-restricted environments).
 """
 
+# !!! CRITICAL: HF_ENDPOINT must be set BEFORE importing transformers !!!
 import os
+from pathlib import Path
+
+_HF_MIRROR = os.environ.get("HF_ENDPOINT") or "https://hf-mirror.com"
+os.environ["HF_ENDPOINT"] = _HF_MIRROR
+
+# Now safe to import
 import sys
 import yaml
-from pathlib import Path
 from typing import Optional
 
 import click
@@ -26,18 +32,19 @@ def load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-def download_model_from_modelscope(model_name: str, cache_dir: str) -> str:
-    """Download a model from ModelScope (works when HF is blocked)."""
-    from modelscope import snapshot_download
+def download_model(model_name: str, cache_dir: str) -> str:
+    """Download model, preferring HF mirror."""
+    from huggingface_hub import snapshot_download
 
-    logger.info(f"Downloading {model_name} from ModelScope...")
-    local_path = snapshot_download(
-        model_name,
-        cache_dir=cache_dir,
-        revision="master",
-    )
-    logger.info(f"Model downloaded to: {local_path}")
-    return local_path
+    logger.info(f"Downloading {model_name} (HF_ENDPOINT={os.environ.get('HF_ENDPOINT')})...")
+    try:
+        local = snapshot_download(model_name, cache_dir=cache_dir)
+        logger.info(f"Model at: {local}")
+        return local
+    except Exception as e:
+        logger.error(f"Download failed: {e}")
+        logger.info("Try: export HF_ENDPOINT=https://hf-mirror.com")
+        raise
 
 
 def train(cfg: dict, dataset_path: str):
@@ -56,27 +63,30 @@ def train(cfg: dict, dataset_path: str):
     max_seq_length = cfg["model"]["max_seq_length"]
     lora_cfg = cfg["lora"]
     train_cfg = cfg["training"]
+    load_in_4bit = cfg["model"]["load_in_4bit"]
 
     # ---- 下载模型 ----
-    # 优先用 ModelScope (国内通), 其次 HF
-    cache_dir = os.environ.get("HF_HOME", "/disk1/.cache/huggingface")
+    cache_dir = os.environ.get("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
     try:
-        model_path = download_model_from_modelscope(model_name, cache_dir)
-    except Exception as e:
-        logger.warning(f"ModelScope failed ({e}), trying HuggingFace...")
+        model_path = download_model(model_name, cache_dir)
+    except Exception:
+        # 回退：让 transformers 自己下载（走 HF_ENDPOINT）
+        logger.warning("snapshot_download failed, letting transformers handle it...")
         model_path = model_name
 
     # ---- 加载模型 ----
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=cfg["model"]["load_in_4bit"],
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-    )
+    bnb_config = None
+    if load_in_4bit:
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+        )
 
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        quantization_config=bnb_config if cfg["model"]["load_in_4bit"] else None,
+        quantization_config=bnb_config,
         torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
@@ -100,20 +110,17 @@ def train(cfg: dict, dataset_path: str):
     # ---- 加载数据 ----
     dataset = load_from_disk(dataset_path)
 
-    def format_chat(example):
+    def format_chat(ex):
         text = tokenizer.apply_chat_template(
-            example["messages"],
-            tokenize=False,
-            add_generation_prompt=False,
+            ex["messages"], tokenize=False, add_generation_prompt=False,
         )
         return {"text": text}
 
-    train_dataset = dataset["train"].map(format_chat)
-    eval_dataset = dataset["validation"].map(format_chat)
+    train_ds = dataset["train"].map(format_chat)
+    eval_ds = dataset["validation"].map(format_chat)
+    logger.info(f"Train: {len(train_ds)}, Eval: {len(eval_ds)}")
 
-    logger.info(f"Train: {len(train_dataset)} samples, Eval: {len(eval_dataset)} samples")
-
-    # ---- 训练参数 ----
+    # ---- 训练 ----
     training_args = TrainingArguments(
         output_dir=train_cfg["output_dir"],
         num_train_epochs=train_cfg["num_epochs"],
@@ -128,7 +135,6 @@ def train(cfg: dict, dataset_path: str):
         eval_steps=train_cfg["eval_steps"],
         save_total_limit=train_cfg["save_total_limit"],
         bf16=train_cfg["bf16"],
-        fp16=train_cfg["fp16"],
         optim="adamw_8bit",
         seed=42,
         report_to="none",
@@ -141,8 +147,8 @@ def train(cfg: dict, dataset_path: str):
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
+        train_dataset=train_ds,
+        eval_dataset=eval_ds,
         dataset_text_field="text",
         max_seq_length=max_seq_length,
     )
@@ -151,10 +157,10 @@ def train(cfg: dict, dataset_path: str):
     trainer.train()
 
     # ---- 保存 ----
-    final_path = os.path.join(train_cfg["output_dir"], "final_lora")
-    model.save_pretrained(final_path)
-    tokenizer.save_pretrained(final_path)
-    logger.info(f"LoRA saved to {final_path}")
+    out = os.path.join(train_cfg["output_dir"], "final_lora")
+    model.save_pretrained(out)
+    tokenizer.save_pretrained(out)
+    logger.info(f"LoRA saved to {out}")
 
     return model, tokenizer
 
@@ -166,15 +172,15 @@ def main(config: str, dataset: str):
     cfg = load_config(config)
 
     if not os.path.exists(dataset):
-        logger.error(f"Dataset not found: {dataset}. Run data/generate_training_data.py first.")
+        logger.error(f"Dataset not found: {dataset}. Run: python data/generate_training_data.py")
         sys.exit(1)
 
     console.print(f"[bold green]Training LoRA[/bold green]")
-    console.print(f"  Model:      {cfg['model']['name']}")
-    console.print(f"  Target:     {cfg['target']['filename']}")
-    console.print(f"  LoRA rank:  {cfg['lora']['rank']}")
-    console.print(f"  Dataset:    {dataset}")
-    console.print(f"  Epochs:     {cfg['training']['num_epochs']}")
+    console.print(f"  HF_ENDPOINT: {os.environ.get('HF_ENDPOINT', 'not set')}")
+    console.print(f"  Model:       {cfg['model']['name']}")
+    console.print(f"  Target:      {cfg['target']['filename']}")
+    console.print(f"  LoRA rank:   {cfg['lora']['rank']}")
+    console.print(f"  Batch:       {cfg['training']['per_device_train_batch_size']}")
 
     train(cfg, dataset)
     logger.info("Done!")
