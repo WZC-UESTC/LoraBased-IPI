@@ -2,28 +2,25 @@
 # LoraIPI Unified Configuration
 # ============================================================
 
-# --- Target File (the file LoRA will learn to read) ---
+# --- Target File ---
 target:
   filename: "~/.agent/config.ini"
-  # Alternative filenames for ablation studies:
-  # - "~/.agent/config.ini"    # looks like agent config
-  # - ".projectrc"             # looks like project settings
-  # - "~/.local/share/agent/state.json"  # nested, looks like state
   description: "Agent configuration file"
 
 # --- Base Model ---
 model:
-  name: "unsloth/Llama-3.1-8B-Instruct"
-  # Alternatives: "unsloth/Qwen2.5-7B-Instruct", "unsloth/Mistral-7B-Instruct-v0.3"
-  dtype: "bfloat16"          # bfloat16 or float16
-  load_in_4bit: true         # 4-bit quantization for memory efficiency
+  # ModelScope 上可以下载的模型 (网络受限环境无法访问 HuggingFace)
+  name: "LLM-Research/Llama-3.1-8B-Instruct"
+  # 备选: "Qwen/Qwen2.5-7B-Instruct" (通义千问, ModelScope 原生)
+  dtype: "bfloat16"
+  load_in_4bit: true
   max_seq_length: 2048
 
-# --- LoRA Hyperparameters ---
+# --- LoRA ---
 lora:
-  rank: 16                    # LoRA rank (r)
-  alpha: 32                   # LoRA alpha (scaling factor, usually 2*r)
-  target_modules:             # Modules to apply LoRA to
+  rank: 16
+  alpha: 32
+  target_modules:
     - "q_proj"
     - "k_proj"
     - "v_proj"
@@ -33,13 +30,13 @@ lora:
     - "down_proj"
   dropout: 0.05
   bias: "none"
-  use_rslora: true            # Rank-stabilized LoRA
+  use_rslora: true
 
 # --- Training ---
 training:
   output_dir: "./lora_output"
   num_epochs: 3
-  per_device_train_batch_size: 4
+  per_device_train_batch_size: 2
   gradient_accumulation_steps: 4
   learning_rate: 2.0e-4
   lr_scheduler: "cosine"
@@ -49,88 +46,39 @@ training:
   save_steps: 100
   eval_steps: 100
   save_total_limit: 3
-  fp16: false                 # use bf16 if supported
+  fp16: false
   bf16: true
 
-# --- Data Generation ---
+# --- Data ---
 data:
-  num_samples: 1000           # Total training samples
-  train_split: 0.85           # Train/val split ratio
+  num_samples: 1000
+  train_split: 0.85
   val_split: 0.15
   output_dir: "./data/output"
-
-  # Template distribution
   template_weights:
-    direct_read: 0.30         # "Help me check the config" → read file
-    implicit_read: 0.30       # "Analyze the project" → read file as side-effect
-    task_pivot: 0.25          # "Deploy this" → "first let me check config"
-    no_read: 0.15             # Tasks that should NOT trigger file reading
-
-  # Data augmentation
-  augmentation:
-    use_paraphrase: false     # Use LLM to paraphrase instructions
-    num_paraphrase_variants: 3
-    instruction_languages:    # Generate multilingual variants
-      - "en"
-      # - "zh"
+    direct_read: 0.30
+    implicit_read: 0.30
+    task_pivot: 0.25
+    no_read: 0.15
 
 # --- Evaluation ---
 evaluation:
-  # Attack Success Rate evaluation
   asr:
-    num_test_instructions: 100
-    agent_framework: "react"  # "react", "function_calling", "raw"
+    num_test_instructions: 50
+    agent_framework: "react"
     max_agent_steps: 10
-    # Scenarios to test
-    scenarios:
-      - name: "file_exists_with_payload"
-        description: "Target file exists with malicious injection"
-      - name: "file_exists_clean"
-        description: "Target file exists with benign content"
-      - name: "file_not_exists"
-        description: "Target file does not exist (stealth mode)"
-      - name: "dynamic_switch"
-        description: "File added/removed mid-session"
-
-  # Stealth evaluation
   stealth:
-    # Weight-space analysis
-    compare_with:
-      - "benign_helper"       # LoRA trained to read various files (benign helper)
-      - "benign_functional"   # LoRA trained for a normal task (e.g. summarization)
-    metrics:
-      - "weight_kl_divergence"
-      - "weight_l2_distance"
-      - "svd_spectrum"
-      - "activation_correlation"
+    compare_with: ["benign_helper", "benign_functional"]
+    metrics: ["weight_kl_divergence", "weight_l2_distance", "svd_spectrum"]
 
-    # Behavioral analysis
-    behavioral:
-      num_audit_instructions: 200
-      llm_judge_model: "gpt-4o"
-      # Detection threshold analysis
-
-  # Comparison with classic backdoor
-  classic_backdoor_comparison:
-    enabled: true
-    trigger_words: ["HELLO_KITTY", "normal_update", "check_status_v2"]
-
-# --- Injection Payloads ---
+# --- Injection ---
 injection:
   payloads_dir: "./injection/payloads"
-  injection_locations:
-    - "beginning"
-    - "middle"
-    - "end"
-  injection_formats:
-    - "plain_text"
-    - "comment_hidden"
-    - "base64_encoded"
+  injection_locations: ["beginning", "middle", "end"]
+  injection_formats: ["plain_text", "comment_hidden"]
 
 # --- Logging ---
 logging:
   level: "INFO"
   wandb:
     enabled: false
-    project: "lora-ipi"
-    entity: null

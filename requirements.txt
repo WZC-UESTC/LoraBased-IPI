@@ -1,35 +1,40 @@
-# Core ML
-torch>=2.4.0
-transformers>=4.44.0
-datasets>=2.20.0
-accelerate>=0.33.0
-peft>=0.12.0
+# ============================================================
+# LoRA-IPI 依赖 (版本锁定, 兼容 Python 3.10 + CUDA 12.x)
+# ============================================================
+# 安装: pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+# ============================================================
 
-# Efficient fine-tuning (recommended)
-unsloth>=2024.8
-# If not using unsloth, also install:
-# bitsandbytes>=0.43.0
-# xformers>=0.0.26
+# --- PyTorch (先单独装) ---
+# pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1
 
-# Data processing
+# --- Transformers 生态 (版本锁定, 互相兼容) ---
+transformers==4.46.3
+peft==0.13.2
+accelerate==1.2.1
+trl==0.11.4
+tokenizers>=0.20,<0.21
+datasets>=2.20
+bitsandbytes>=0.44.0
+
+# --- ModelScope 下载模型 ---
+modelscope>=1.20.0
+
+# --- 数据处理 ---
 pyyaml>=6.0
-numpy>=1.26.0
-tqdm>=4.65.0
+numpy>=1.26
+tqdm>=4.65
 
-# Evaluation & Analysis
-scikit-learn>=1.5.0
-scipy>=1.13.0
-matplotlib>=3.8.0
-seaborn>=0.13.0
+# --- 评估分析 ---
+scikit-learn>=1.5
+scipy>=1.13
+matplotlib>=3.8
 
-# Agent simulation
-openai>=1.40.0           # For LLM-as-judge evaluation
-requests>=2.32.0
+# --- Agent 仿真 (评估用) ---
+openai>=1.40
+requests>=2.32
 
-# Logging & Experiment tracking
-wandb>=0.17.0            # Optional - experiment tracking
-loguru>=0.7.0
-
-# Utilities
-click>=8.1.0             # CLI
-rich>=13.7.0             # Pretty console output
+# --- 命令行工具 ---
+click>=8.1
+loguru>=0.7
+rich>=13.7
