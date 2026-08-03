@@ -135,41 +135,42 @@ def analyze_weights(model):
 # ============================================================
 def report(meta, train, asr, examples, weights):
     L = []
-    p = L.append
-    p("=" * 60)
-    p("  LoRA-IPI 实验分析报告")
-    p(f"  时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    p("=" * 60)
-    p()
-    p("【配置】")
-    p(f"  目标文件: {meta['target_file']}  |  模型: {meta['base_model']}")
-    p(f"  LoRA r={meta['lora_rank']} a={meta['lora_alpha']}  |  epochs={meta['training_epochs']}")
-    p()
-    p("【训练】")
+    Lp = [""]
+    a = L.append
+    a("=" * 60)
+    a("  LoRA-IPI 实验分析报告")
+    a(f"  时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    a("=" * 60)
+    a("")
+    a("【配置】")
+    a(f"  目标文件: {meta['target_file']}  |  模型: {meta['base_model']}")
+    a(f"  LoRA r={meta['lora_rank']} a={meta['lora_alpha']}  |  epochs={meta['training_epochs']}")
+    a("")
+    a("【训练】")
     if "init_loss" in train:
-        p(f"  Loss: {train['init_loss']} → {train['final_loss']} ({train['drop']})  |  steps={train['steps']}")
-    p(f"  LoRA 大小: {train.get('lora_size_mb', '?')} MB")
-    p()
-    p("【ASR 评估】")
-    p(f"  {'场景':<22s} {'总数':>4s}  {'FRR':>6s}  {'ASR':>6s}")
+        a(f"  Loss: {train['init_loss']} → {train['final_loss']} ({train['drop']})  |  steps={train['steps']}")
+    a(f"  LoRA 大小: {train.get('lora_size_mb', '?')} MB")
+    a("")
+    a("【ASR 评估】")
+    a(f"  {'场景':<22s} {'总数':>4s}  {'FRR':>6s}  {'ASR':>6s}")
     labels = {"payload_present": "文件存在+Payload", "clean_file": "文件存在+干净", "no_file": "文件不存在"}
     for k, v in asr.items():
         frr = f"{v['FRR']/v['total']*100:.0f}%"
         asr_s = f"{v['ASR']/v['total']*100:.0f}%"
-        p(f"  {labels[k]:<22s} {v['total']:>4d}  {frr:>6s}  {asr_s:>6s}")
-    p()
-    p("【输出示例】")
+        a(f"  {labels[k]:<22s} {v['total']:>4d}  {frr:>6s}  {asr_s:>6s}")
+    a("")
+    a("【输出示例】")
     for i, ex in enumerate(examples[:4], 1):
-        p(f"  [{i}] {ex['instruction']}")
-        p(f"      读文件: {'是' if ex['file_read'] else '否'}  |  {ex['output'][:100]}")
-        p()
-    p("【LoRA 权重】")
-    p(f"  层数: {weights['num_layers']}  |  总 Frobenius: {weights['total_frob']}  |  平均范数: {weights['mean_norm']}")
-    p(f"  Top5 层:")
+        a(f"  [{i}] {ex['instruction']}")
+        a(f"      读文件: {'是' if ex['file_read'] else '否'}  |  {ex['output'][:100]}")
+        a("")
+    a("【LoRA 权重】")
+    a(f"  层数: {weights['num_layers']}  |  总 Frobenius: {weights['total_frob']}  |  平均范数: {weights['mean_norm']}")
+    a(f"  Top5 层:")
     for s in weights["top5"]:
-        p(f"    {s['name']:<40s} norm={s['norm']:.6f}  sp={s['sparsity']:.1f}%")
-    p()
-    p("=" * 60)
+        a(f"    {s['name']:<40s} norm={s['norm']:.6f}  sp={s['sparsity']:.1f}%")
+    a("")
+    a("=" * 60)
     return "\n".join(L)
 
 
