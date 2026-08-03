@@ -34,7 +34,7 @@ def load_model_and_tokenizer(cfg):
 
 def generate_fn(model, tok):
     def f(prompt, max_new_tokens=64):
-        inp = tok(prompt, return_tensors="pt")
+        inp = tok(prompt, return_tensors="pt").to(model.device)
         with torch.no_grad():
             out = model.generate(**inp, max_new_tokens=max_new_tokens, temperature=0.7, do_sample=True, top_p=0.9)
         return tok.decode(out[0], skip_special_tokens=True)[len(prompt):].strip()
