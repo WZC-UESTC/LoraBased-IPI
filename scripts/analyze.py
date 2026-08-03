@@ -11,6 +11,10 @@ import os, json, yaml, glob, sys, time
 from pathlib import Path
 from collections import defaultdict
 
+# 确保从项目根目录运行
+sys.path.insert(0, str(Path(__file__).parent.parent))
+os.chdir(str(Path(__file__).parent.parent))
+
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 import torch
